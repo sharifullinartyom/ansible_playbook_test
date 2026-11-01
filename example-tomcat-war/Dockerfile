@@ -6,4 +6,4 @@ COPY . .
 
 RUN mvn clean package -DskipTests
 
-CMD ["sh", "-c", "cp target/*.war /app/dist/"]
+CMD ["sh", "-c", "mkdir -p /app/dist && cp target/*.war /app/dist/"]
