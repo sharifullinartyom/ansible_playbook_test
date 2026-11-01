@@ -1,6 +1,4 @@
 ---
-version: '3.8'
-
 services:
   # build with maven from dockerfile
   build-service:
@@ -10,6 +8,25 @@ services:
     volumes:
       - app-artifact:/app.dist
 
+  # prod service with tomcat
+  prod-service:
+    image: tomcat:9-jdk21-temurin
+    volumes:
+      - app-artifact:/tmp/artifact
+      - tomcat-webapps:/usr/local/tomcat/webapps
+    entrypoint: >
+      sh -c "
+      rm -rf /usr/local/tomcat/webapps/* &&
+      cp /tmp/artifact/*.war /usr/local/tomcat/webapps/ROOT.war &&
+      catalina.sh run
+      "
+    depends_on:
+      build-service:
+        condition: service_completed_successfully
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
 
 volumes:
   app-artifact:
+  tomcat-webapps:
