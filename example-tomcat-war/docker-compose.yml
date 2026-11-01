@@ -1,0 +1,15 @@
+---
+version: '3.8'
+
+services:
+  # build with maven from dockerfile
+  build-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - app-artifact:/app.dist
+
+
+volumes:
+  app-artifact:
