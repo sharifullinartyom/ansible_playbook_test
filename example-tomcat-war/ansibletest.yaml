@@ -1,0 +1,28 @@
+---
+- name: build java project
+  hosts: web
+  become: yes
+  vars:
+    repo_url: "https://github.com/sharifullinartyom/ansible_playbook_test.git"
+    build_dir: "/opt/build/repo"
+    tools:
+      - git
+      - default-jdk
+      - maven
+
+  tasks:
+    - name: Ensure tools package is present
+      name: "{{ tools }}"
+      state: present
+
+    - name: Create directories
+      file:
+        path: "{{ build_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Clone repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ build_dir }}/src"
+        update: yes
