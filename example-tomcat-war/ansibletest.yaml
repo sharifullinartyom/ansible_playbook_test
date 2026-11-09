@@ -118,11 +118,9 @@
         name: tomcat9
         enabled: yes
         state: started
-      notify: Reload Tomcat
 
   handlers:
     - name: Reload Tomcat
       systemd:
         name: tomcat9
-        daemon_reload: yes
-        state: reloaded
+        state: started
