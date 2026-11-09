@@ -1,3 +1,4 @@
+---
 - name: Build Java project
   hosts: web
   become: yes
@@ -29,6 +30,11 @@
         dest: "{{ build_dir }}/{{ repo_dir_name }}"
         update: yes
 
+    - name: Clean previous build artifacts
+      file:
+        path: "{{ build_dir }}/{{ repo_dir_name }}/{{ project_name }}/target"
+        state: absent
+
     - name: Build project with Maven
       command: mvn clean package -DskipTests
       args:
@@ -56,7 +62,6 @@
         msg: |
           WAR file not found after build.
           Searched in: {{ build_dir }}/{{ repo_dir_name }}/{{ project_name }}/target
-          Found files count: {{ war_file.files | length }}
       when: war_file.files | length == 0
 
     - name: Set fact for WAR path
@@ -64,54 +69,48 @@
         war_path: "{{ war_file.files[0].path }}"
         war_filename: "{{ war_file.files[0].path | basename }}"
         build_result: "success"
-      when: war_file.files | length > 0
+
+    - name: Pull WAR to controller
+      fetch:
+        src: "{{ war_path }}"
+        dest: "/tmp/{{ project_name }}/"
+        flat: yes
+
 
 - name: Deploy Java project to prod-node
   hosts: db
   become: yes
   vars:
     app_dir: "/var/lib/tomcat9/webapps"
-    build_node_ip: "213.171.26.117"
+    war_filename: "{{ hostvars[groups['web'][0]].war_filename }}"
+
   tasks:
     - name: Ensure Tomcat9 package is present
       apt:
         name: tomcat9
         state: present
 
-    - name: Debug build node facts
-      debug:
-        var: "hostvars['{{ build_node_ip }}']"
-
     - name: Validate that build was successful
       assert:
         that:
-          - hostvars[build_node_ip].build_result is defined
-          - hostvars[build_node_ip].build_result == "success"
+          - hostvars[groups['web'][0]].build_result is defined
+          - hostvars[groups['web'][0]].build_result == "success"
         fail_msg: "Build did not complete successfully on web node."
 
     - name: Stop Tomcat before replacing WAR
       systemd:
         name: tomcat9
         state: stopped
-      when:
-        - hostvars[build_node_ip].build_result == "success"
-        - tomcat_stop_before_deploy | default(true) | bool
-
-    - name: Fetch WAR from build-node to prod
-      fetch:
-        src: "{{ hostvars[build_node_ip].war_path }}"
-        dest: "/tmp/"
-        flat: yes
-      when: hostvars[build_node_ip].build_result == "success"
+      when: tomcat_stop_before_deploy | default(true) | bool
 
     - name: Deploy WAR to Tomcat webapps
       copy:
-        src: "/tmp/{{ hostvars[build_node_ip].war_filename }}"
-        dest: "{{ app_dir }}/{{ hostvars[build_node_ip].war_filename }}"
+        src: "/tmp/{{ project_name }}/{{ war_filename }}"
+        dest: "{{ app_dir }}/{{ war_filename }}"
         owner: tomcat9
         group: tomcat9
         mode: "0644"
-      when: hostvars[build_node_ip].build_result == "success"
+      notify: Reload Tomcat
 
     - name: Start Tomcat after deploy
       systemd:
@@ -119,9 +118,6 @@
         enabled: yes
         state: started
       notify: Reload Tomcat
-      when:
-        - hostvars[build_node_ip].build_result == "success"
-        - tomcat_stop_before_deploy | default(true) | bool
 
   handlers:
     - name: Reload Tomcat
