@@ -46,7 +46,7 @@
 
     - name: Find generated WAR file
       find:
-        paths: "{{ build_dir }}/{{ repo_dir_name }}/target"
+        paths: "{{ build_dir }}/{{ repo_dir_name }}/{{ project_name }}/target"
         pattern: "*.war"
         recurse: yes
       register: war_file
@@ -55,7 +55,7 @@
       fail:
         msg: |
           WAR file not found after build.
-          Searched in: {{ build_dir }}/{{ repo_dir_name }}/target
+          Searched in: {{ build_dir }}/{{ repo_dir_name }}/{{ project_name }}/target
           Found files count: {{ war_file.files | length }}
       when: war_file.files | length == 0
 
