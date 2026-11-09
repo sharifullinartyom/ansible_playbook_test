@@ -83,6 +83,7 @@
   vars:
     app_dir: "/var/lib/tomcat9/webapps"
     war_filename: "{{ hostvars[groups['web'][0]].war_filename }}"
+    project_name: "example-tomcat-war"
 
   tasks:
     - name: Ensure Tomcat9 package is present
