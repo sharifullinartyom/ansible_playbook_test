@@ -102,7 +102,7 @@
     - name: Deploy WAR to Tomcat webapps
       copy:
         src: "/tmp/{{ hostvars[groups['web'][0]].war_filename }}"
-        dest: "{{ app_dir }}/{{ project_name }}.war"
+        dest: "{{ app_dir }}/{{ hostvars[groups['web'][0]].war_filename }}"
         owner: tomcat9
         group: tomcat9
         mode: "0644"
