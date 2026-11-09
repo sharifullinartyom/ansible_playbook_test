@@ -64,3 +64,56 @@
         war_path: "{{ war_file.files[0].path }}"
         war_filename: "{{ war_file.files[0].path | basename }}"
       when: war_file.files | length > 0
+
+- name: Deploy Java project
+  hosts: db
+  become: yes
+  vars:
+    project_name: "example-tomcat-war"
+    app_dir: "/var/lib/tomcat9/webapps"
+  tasks:
+    - name: Ensure Tomcat9 package is present
+      apt:
+        name: tomcat9
+        state: present
+
+    - name: Stop Tomcat before replacing WAR
+      systemd:
+        name: tomcat9
+        state: stopped
+      when:
+        - hostvars[groups['web'][0]].build_result == "success"
+        - tomcat_stop_before_deploy | default(true) | bool
+
+    - name: Fetch WAR from build-node
+      fetch:
+        src: "{{ hostvars[groups['web'][0]].war_path }}"
+        dest: "/tmp/"
+        flat: yes
+      when: hostvars[groups['web'][0]].build_result == "success"
+
+    - name: Deploy WAR to Tomcat webapps
+      copy:
+        src: "/tmp/{{ hostvars[groups['web'][0]].war_filename }}"
+        dest: "{{ app_dir }}/{{ project_name }}.war"
+        owner: tomcat9
+        group: tomcat9
+        mode: "0644"
+      when: hostvars[groups['web'][0]].build_result == "success"
+
+    - name: Start Tomcat after deploy
+      systemd:
+        name: tomcat9
+        enabled: yes
+        state: started
+      notify: Reload Tomcat
+      when:
+        - hostvars[groups['web'][0]].build_result == "success"
+        - tomcat_stop_before_deploy | default(true) | bool
+
+  handlers:
+    - name: Reload Tomcat
+      systemd:
+        name: tomcat9
+        daemon_reload: yes
+        state: reloaded
