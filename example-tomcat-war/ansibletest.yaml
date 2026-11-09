@@ -3,6 +3,7 @@
   become: yes
   vars:
     repo_dir_name: "ansible_playbook_test"
+    project_name: "example-tomcat-war"
     repo_url: "https://github.com/sharifullinartyom/ansible_playbook_test.git"
     build_dir: "/opt/build"
     tools:
@@ -31,7 +32,7 @@
     - name: Build project with Maven
       command: mvn clean package -DskipTests
       args:
-        chdir: "{{ build_dir }}/{{ repo_dir_name }}"
+        chdir: "{{ build_dir }}/{{ repo_dir_name }}/{{ project_name }}"
       register: maven_build
       failed_when: false
 
