@@ -27,3 +27,27 @@
         repo: "{{ repo_url }}"
         dest: "{{ build_dir }}/src"
         update: yes
+
+    - name: Build project with Maven
+      command: mvn clean package -DskipTests
+      args:
+        chdir: "{{ build_dir }}/src"
+
+    - name: Find generated WAR file
+      find:
+        paths: "{{ build_dir }}/src/target"
+        pattern: "*.war"
+        recurse: yes
+      register: war_file
+      when: build_result is success
+
+    - name: Fail if no WAR found
+      fail:
+        msg: "WAR file not found after build."
+      when: (war_file.files | length) == 0
+
+    - name: Set fact for WAR path
+      set_fact:
+        war_path: "{{ war_file.files[0].path }}"
+        war_filename: "{{ war_file.files[0].filename }}"
+      when: build_result is success    
