@@ -77,6 +77,13 @@
         name: tomcat9
         state: present
 
+    - name: Validate that build_result exists on web node
+      assert:
+        that:
+          - hostvars[groups['web'][0]].build_result is defined
+          - hostvars[groups['web'][0]].build_result == "success"
+        fail_msg: "Build did not complete successfully on web node."
+
     - name: Stop Tomcat before replacing WAR
       systemd:
         name: tomcat9
