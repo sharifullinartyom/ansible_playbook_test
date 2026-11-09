@@ -108,8 +108,8 @@
       copy:
         src: "/tmp/{{ project_name }}/{{ war_filename }}"
         dest: "{{ app_dir }}/{{ war_filename }}"
-        owner: tomcat9
-        group: tomcat9
+        owner: tomcat
+        group: tomcat
         mode: "0644"
       notify: Reload Tomcat
 
