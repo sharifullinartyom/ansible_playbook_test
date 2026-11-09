@@ -66,23 +66,27 @@
         build_result: "success"
       when: war_file.files | length > 0
 
-- name: Deploy Java project
+- name: Deploy Java project to prod-node
   hosts: db
   become: yes
   vars:
-    project_name: "example-tomcat-war"
     app_dir: "/var/lib/tomcat9/webapps"
+    build_node_ip: "213.171.26.117"
   tasks:
     - name: Ensure Tomcat9 package is present
       apt:
         name: tomcat9
         state: present
 
-    - name: Validate that build_result exists on web node
+    - name: Debug build node facts
+      debug:
+        var: "hostvars['{{ build_node_ip }}']"
+
+    - name: Validate that build was successful
       assert:
         that:
-          - hostvars[groups['web'][0]].build_result is defined
-          - hostvars[groups['web'][0]].build_result == "success"
+          - hostvars[build_node_ip].build_result is defined
+          - hostvars[build_node_ip].build_result == "success"
         fail_msg: "Build did not complete successfully on web node."
 
     - name: Stop Tomcat before replacing WAR
@@ -90,24 +94,24 @@
         name: tomcat9
         state: stopped
       when:
-        - hostvars[groups['web'][0]].build_result == "success"
+        - hostvars[build_node_ip].build_result == "success"
         - tomcat_stop_before_deploy | default(true) | bool
 
-    - name: Fetch WAR from build-node
+    - name: Fetch WAR from build-node to prod
       fetch:
-        src: "{{ hostvars[groups['web'][0]].war_path }}"
+        src: "{{ hostvars[build_node_ip].war_path }}"
         dest: "/tmp/"
         flat: yes
-      when: hostvars[groups['web'][0]].build_result == "success"
+      when: hostvars[build_node_ip].build_result == "success"
 
     - name: Deploy WAR to Tomcat webapps
       copy:
-        src: "/tmp/{{ hostvars[groups['web'][0]].war_filename }}"
-        dest: "{{ app_dir }}/{{ hostvars[groups['web'][0]].war_filename }}"
+        src: "/tmp/{{ hostvars[build_node_ip].war_filename }}"
+        dest: "{{ app_dir }}/{{ hostvars[build_node_ip].war_filename }}"
         owner: tomcat9
         group: tomcat9
         mode: "0644"
-      when: hostvars[groups['web'][0]].build_result == "success"
+      when: hostvars[build_node_ip].build_result == "success"
 
     - name: Start Tomcat after deploy
       systemd:
@@ -116,7 +120,7 @@
         state: started
       notify: Reload Tomcat
       when:
-        - hostvars[groups['web'][0]].build_result == "success"
+        - hostvars[build_node_ip].build_result == "success"
         - tomcat_stop_before_deploy | default(true) | bool
 
   handlers:
